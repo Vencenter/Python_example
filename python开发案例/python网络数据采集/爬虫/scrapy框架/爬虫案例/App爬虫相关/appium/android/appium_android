@@ -1,0 +1,368 @@
+# API
+使用代码操作App、总结相关API的用法。这里使用的Python库为AppiumPythonClient，其GitHub地址为https://github.com/appium/python-client，此库继承自Selenium，使用方法与Selenium有很多共同之处。
+
+## 初始化
+需要配置Desired Capabilities参数，完整的配置说明可以参考https://github.com/appium/appium/blob/master/docs/en/writing-running-appium/caps.md。一般来说，配置几个基本参数即可，如下所示：
+```python
+from appium import webdriver
+
+server = 'http://localhost:4723/wd/hub'
+desired_caps = {
+    'platformName': 'Android',
+    'deviceName': 'fz_5_0_0',
+    'appPackage': 'com.tencent.mm',
+    'appActivity': '.ui.LauncherUI'
+}
+driver = webdriver.Remote(server, desired_caps)
+```
+这里配置了启动微信App的Desired Capabilities，这样Appnium就会自动查找手机上的包名和入口类，然后将其启动。包名和入口类的名称可以在安装包中的AndroidManifest.xml文件获取。
+
+如果要打开的App没有事先在手机上安装，我们可以直接指定App参数为安装包所在路径，这样程序启动时就会自动向手机安装并启动App，如下所示：
+```python
+from appium import webdriver
+
+server = 'http://localhost:4723/wd/hub'
+desired_caps = {
+    'platformName': 'Android',
+    'deviceName': 'fz_5_0_0',
+    'app': './weixin.apk'
+}
+driver = webdriver.Remote(server, desired_caps)
+```
+程序启动的时候就会寻找PC当前路径下的APK安装包，然后将其安装到手机中并启动。
+
+## 获取 apk 包名即 appPackage 和 appActivity
+```bash
+先touch log.txt
+a. 启动待测apk
+b. 开启日志输出: adb logcat>/Users/afa/myFiles/tmp/log.txt
+c. 关闭日志输出: ctrl+c
+d. 查看日志
+找寻：Displayed com.mm.android.hsy/.ui.LoginActivity: +3s859ms
+appPackage = com.mm.android.hsy
+appActivity = .ui.LoginActivity
+```
+
+## 查找元素
+我们可以使用Selenium中通用的查找方法来实现元素的查找，如下所示：
+```python
+el = driver.find_element_by_id('com.tencent.mm:id/cjk')
+```
+在Selenium中，其他查找元素的方法同样适用，在此不再赘述。
+
+在Android平台上，我们还可以使用UIAutomator来进行元素选择，如下所示：
+```python
+el = self.driver.find_element_by_android_uiautomator('new UiSelector().description("Animation")')
+els = self.driver.find_elements_by_android_uiautomator('new UiSelector().clickable(true)')
+```
+在iOS平台上，我们可以使用UIAutomation来进行元素选择，如下所示：
+```python
+el = self.driver.find_element_by_ios_uiautomation('.elements()[0]')
+els = self.driver.find_elements_by_ios_uiautomation('.elements()')
+```
+还可以使用iOS Predicates来进行元素选择，如下所示：
+```python
+el = self.driver.find_element_by_ios_predicate('wdName == "Buttons"')
+els = self.driver.find_elements_by_ios_predicate('wdValue == "SearchBar" AND isWDDivisible == 1')
+```
+也可以使用iOS Class Chain来进行选择，如下所示：
+```python
+el = self.driver.find_element_by_ios_class_chain('XCUIElementTypeWindow/XCUIElementTypeButton[3]')
+els = self.driver.find_elements_by_ios_class_chain('XCUIElementTypeWindow/XCUIElementTypeButton')
+```
+但是此种方法只适用于XCUITest驱动，具体可以参考：https://github.com/appium/appium-xcuitest-driver
+
+## 点击
+点击可以使用tap()方法，该方法可以模拟手指点击（最多五个手指），可设置按时长短（毫秒），代码如下所示：
+```python
+tap(self, positions, duration=None)
+```
+其中后两个参数如下。
+- positions：它是点击的位置组成的列表。
+- duration：它是点击持续时间。
+
+实例如下所示：
+```python
+driver.tap([(100, 20), (100, 60), (100, 100)], 500)
+```
+这样就可以模拟点击屏幕的某几个点。
+
+对于某个元素如按钮来说，我们可以直接调用cilck()方法实现模拟点击，实例如下所示：
+```python
+button = find_element_by_id('com.tencent.mm:id/btn')
+button.click()
+```
+
+## 屏幕拖动
+可以使用scroll()方法模拟屏幕滚动，用法如下所示：
+```python
+scroll(self, origin_el, destination_el)
+```
+可以实现从元素origin_el滚动至元素destination_el。
+
+它的后两个参数如下。
+- original_el：它是被操作的元素。
+- destination_el：它是目标元素。
+```python
+driver.scroll(el1,el2)
+```
+可以使用swipe()模拟从A点滑动到B点，用法如下所示：
+```python
+swipe(self, start_x, start_y, end_x, end_y, duration=None)
+```
+后面几个参数说明如下。
+- start_x：它是开始位置的横坐标。
+- start_y：它是开始位置的纵坐标。
+- end_x：它是终止位置的横坐标。
+- end_y：它是终止位置的纵坐标。
+- duration：它是持续时间，单位是毫秒。
+
+实例如下所示：
+```python
+# 这样可以实现在5s时间内，由(100, 100)滑动到 (100, 400)
+driver.swipe(100, 100, 100, 400, 5000)
+```
+可以使用flick()方法模拟从A点快速滑动到B点，用法如下所示：
+```python
+flick(self, start_x, start_y, end_x, end_y)
+```
+几个参数说明如下。
+- start_x：它是开始位置的横坐标。
+- start_y：它是开始位置的纵坐标。
+- end_x：它是终止位置的横坐标。
+- end_y：它是终止位置的纵坐标。
+```python
+driver.flick(100, 100, 100, 400)
+```
+## 拖曳
+可以使用drag_and_drop()将某个元素拖动到另一个目标元素上，用法如下所示：
+```python
+drag_and_drop(self, origin_el, destination_el)
+```
+可以实现将元素origin_el拖曳至元素destination_el。
+
+两个参数说明如下。
+- original_el：它是被拖曳的元素。
+- destination_el：它是目标元素。
+```python
+driver.drag_and_drop(el1, el2)
+```
+
+## 文本输入
+- 文本框输入
+```python
+el = find_element_by_id('com.tencent.mm:id/cjk')
+# 清空输入
+el.clear()
+el.set_text('Hello')
+```
+- hide_keyboard
+```python
+# hide_keyboard(self, key_name=None, key=None, strategy=None):
+# 隐藏键盘,iOS使用key_name隐藏，安卓不使用参数
+driver.hide_keyboard()
+```
+- keyevent
+```python
+# keyevent(self, keycode, metastate=None):
+# 发送按键码（安卓仅有），按键码可以上网址中找到
+driver.keyevent('4')
+```
+- long_press_keycode
+```python
+# long_press_keycode(self, keycode, metastate=None):
+# 发送一个长按的按键码（长按某键）
+# 详细的按键代码见这里  http://developer.android.com/reference/android/view/KeyEvent.html
+driver.long_press_keycode('4')
+```
+
+## 动作链
+与Selenium中的ActionChains类似，Appium中的TouchAction可支持的方法有tap()、press()、long_press()、release()、move_to()、wait()、cancel()等，实例如下所示：
+```python
+el = self.driver.find_element_by_accessibility_id('Animation')
+action = TouchAction(self.driver)
+action.tap(el).perform()
+```
+首先选中一个元素，然后利用TouchAction实现点击操作。
+
+如果想要实现拖动操作，可以用如下方式：
+```python
+els = self.driver.find_elements_by_class_name('listView')
+a1 = TouchAction()
+a1.press(els[0]).move_to(x=10, y=0).move_to(x=10, y=-75).move_to(x=10, y=-600).release()
+a2 = TouchAction()
+a2.press(els[1]).move_to(x=10, y=10).move_to(x=10, y=-300).move_to(x=10, y=-600).release()
+```
+
+## 上下文
+1. contexts
+```python
+# 返回当前会话中的上下文，使用后可以识别H5页面的控件
+driver.contexts
+```
+
+2. current_context
+```python
+# 返回当前会话的当前上下文
+driver.current_context
+```
+
+3. context
+```python
+# 返回当前会话的当前上下文。
+driver.context
+```
+
+## 重启应用
+reset
+```python
+# 重置应用(类似删除应用数据)
+driver.reset()
+```
+
+## 后台运行
+- background_app
+```python
+# background_app(self, seconds):
+# 后台运行app多少秒
+driver.background_app(5)   置后台5秒后再运行
+```
+
+## app运行相关
+- 检查app是否安装
+    - is_app_installed
+```python
+driver.is_app_installed('com.xxxx')
+```
+
+- 安装app
+    - install_app
+```python
+# install_app(self, app_path):
+# 安装app,app_path为安装包路径 - the local or remote path to the application to install
+driver.install_app(app_path)
+```
+
+- 删除app
+    - remove_app
+```python
+driver.remove_app('com.xxx.')
+```
+
+- 启动app
+    - launch_app
+```python
+driver.launch_app('com.xx.')
+```
+
+- 关闭app
+    - close_app
+```python
+driver.close_app('com.xx.')
+```
+
+## 摇一摇
+- shake
+```python
+driver.shake()
+```
+
+## 网络连接
+- set_network_connection
+```python
+# set_network_connection(self, connectionType):
+Sets the network connection type. Android only.
+    Possible values:
+        Value (Alias)      | Data | Wifi | Airplane Mode
+        -------------------------------------------------
+        0 (None)           | 0    | 0    | 0
+        1 (Airplane Mode)  | 0    | 0    | 1
+        2 (Wifi only)      | 0    | 1    | 0
+        4 (Data only)      | 1    | 0    | 0
+        6 (All network on) | 1    | 1    | 0
+    These are available through the enumeration `appium.webdriver.ConnectionType`
+    设置网络类型
+    :Args:
+     - connectionType - a member of the enum appium.webdriver.ConnectionType
+
+用法  先加载from appium.webdriver.connectiontype import ConnectionType
+dr.set_network_connection(ConnectionType.WIFI_ONLY)
+ConnectionType的类型有
+NO_CONNECTION = 0
+AIRPLANE_MODE = 1
+WIFI_ONLY = 2
+DATA_ONLY = 4
+ALL_NETWORK_ON = 6
+```
+
+## 经纬度
+- set_location
+```python
+# set_location(self, latitude, longitude, altitude):
+设置设备的经纬度
+    :Args:
+     - latitude纬度 - String or numeric value between -90.0 and 90.00
+     - longitude经度 - String or numeric value between -180.0 and 180.0
+     - altitude海拔高度- String or numeric value
+driver.set_location(纬度，经度，高度)
+```
+
+# 屏幕相关
+- location
+```python
+# 获取元素左上角的坐标
+'''返回element的x坐标, int类型'''
+driver.element.location.get('x')
+'''返回element的y坐标, int类型'''
+driver.element.location.get('y')
+```
+- get_window_size
+```python
+# 获取当前屏幕的分辨率(长和高)
+driver.get_window_size()
+```
+
+## android中的html页面执行脚本
+- execute_script(同步执行)
+```python
+# execute_script(self, script, *args):
+在当前窗口/框架(特指 Html 的 iframe)同步执行 javascript 代码。你可以理解为如果这段代码是睡眠5秒，这五秒内主线程的 javascript 不会执行
+    :Args:
+     - script: The JavaScript to execute.
+     - *args: Any applicable arguments for your JavaScript.
+
+    :Usage:
+        driver.execute_script('document.title')
+```
+- execute_async_script(异步执行)
+```python
+# execute_async_script(self, script, *args):
+插入 javascript 代码，只是这个是异步的，也就是如果你的代码是睡眠5秒，那么你只是自己在睡，页面的其他 javascript 代码还是照常执行
+    :Args:
+     - script: The JavaScript to execute.
+     - *args: Any applicable arguments for your JavaScript.
+
+    :Usage:
+        driver.execute_async_script('document.title')
+```
+
+## 获取android中html当前的url
+- current_url
+```python
+driver.current_url
+```
+
+## 获取页面资源
+- page_source
+```python
+# 获取当前页面的源
+driver.page_source
+```
+
+## 屏幕截图
+- get_screenshot_as_file
+```python
+driver.get_screenshot_as_file('foo.png')
+```
+
+## 利用以上API，我们就可以完成绝大部分操作。更多的API操作可以参考：https://testerhome.com/topics/3711
